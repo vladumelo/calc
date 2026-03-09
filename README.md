@@ -14,7 +14,7 @@
 ## Структура проекта
 
 ```text
-map-estimate-calculator/
+.
 ├── index.html
 ├── style.css
 ├── app.js
@@ -55,7 +55,6 @@ export const APP_CONFIG = {
 Пример через Python:
 
 ```bash
-cd map-estimate-calculator
 python3 -m http.server 8080
 ```
 
@@ -67,7 +66,7 @@ http://localhost:8080
 
 ## 3) Как опубликовать на GitHub Pages
 
-1. Создайте репозиторий и загрузите содержимое папки `map-estimate-calculator/` в корень репозитория.
+1. Создайте репозиторий и загрузите все файлы проекта в корень репозитория.
 2. В GitHub откройте: **Settings → Pages**.
 3. В **Build and deployment** выберите:
    - **Source**: `Deploy from a branch`
