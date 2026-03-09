@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Калькулятор благоустройства</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <main class="layout">
+        <section class="map-column">
+          <div class="map-topbar">
+            <h1>Калькулятор благоустройства</h1>
+            <p>Найдите участок, нарисуйте объекты и получите предварительную смету.</p>
+          </div>
+          <div id="map" class="map-canvas" aria-label="Карта"></div>
+          <div id="map-status" class="map-status"></div>
+        </section>
+
+        <aside class="panel-column">
+          <section class="panel-block tools-block">
+            <h2>Инструменты</h2>
+            <div class="tool-grid" id="tool-grid"></div>
+            <div class="inline-controls">
+              <label for="map-type">Тип карты</label>
+              <select id="map-type">
+                <option value="yandex#map">Схема</option>
+                <option value="yandex#satellite">Спутник</option>
+                <option value="yandex#hybrid">Гибрид</option>
+              </select>
+            </div>
+            <div class="hint" id="drawing-hint">Выберите инструмент для начала.</div>
+          </section>
+
+          <section class="panel-block list-block">
+            <h2>Объекты</h2>
+            <div id="object-list" class="object-list"></div>
+          </section>
+
+          <section class="panel-block actions-block">
+            <h2>Проект</h2>
+            <div class="action-row">
+              <button id="save-local" class="secondary">Сохранить в браузере</button>
+              <button id="load-local" class="secondary">Загрузить из браузера</button>
+            </div>
+            <div class="action-row">
+              <button id="export-json" class="secondary">Экспорт JSON</button>
+              <label for="import-json" class="button-like secondary">Импорт JSON</label>
+              <input id="import-json" type="file" accept="application/json" hidden />
+            </div>
+          </section>
+
+          <section class="panel-block totals-block" id="totals-block"></section>
+        </aside>
+      </main>
+    </div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
