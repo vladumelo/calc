@@ -2,10 +2,19 @@ function cloneCoords(coords) {
   return JSON.parse(JSON.stringify(coords));
 }
 
-export function createDrawingManager({ ymaps, map, onCreate, onSelect, onStatusChange }) {
+export function createDrawingManager({
+  ymaps,
+  map,
+  mapContainer,
+  onCreate,
+  onSelect,
+  onGeometryChange,
+  onStatusChange,
+}) {
   let activeTool = 'select';
   let drawingCoords = [];
   let tempGeoObject = null;
+  let previewPoint = null;
   let selectedObjectId = null;
   const geoObjects = new Map();
 
@@ -36,21 +45,57 @@ export function createDrawingManager({ ymaps, map, onCreate, onSelect, onStatusC
     }
   }
 
-  function refreshTemp() {
+  function removePreviewPoint() {
+    if (previewPoint) {
+      map.geoObjects.remove(previewPoint);
+      previewPoint = null;
+    }
+  }
+
+  function updateInteractionMode(isDrawing) {
+    if (isDrawing) {
+      map.behaviors.disable('drag');
+      mapContainer.classList.add('drawing-cursor');
+    } else {
+      map.behaviors.enable('drag');
+      mapContainer.classList.remove('drawing-cursor');
+    }
+  }
+
+  function refreshTemp(cursorCoords = null) {
     removeTemp();
 
-    if (activeTool === 'polygon' && drawingCoords.length >= 2) {
-      tempGeoObject = new ymaps.Polygon([drawingCoords], {}, styleByKind('polygon'));
+    if (activeTool !== 'polygon' && activeTool !== 'polyline') return;
+
+    const previewCoords = cursorCoords ? [...drawingCoords, cursorCoords] : drawingCoords;
+
+    if (activeTool === 'polygon' && previewCoords.length >= 2) {
+      tempGeoObject = new ymaps.Polygon([previewCoords], {}, styleByKind('polygon'));
     }
 
-    if (activeTool === 'polyline' && drawingCoords.length >= 1) {
-      tempGeoObject = new ymaps.Polyline(drawingCoords, {}, styleByKind('polyline'));
+    if (activeTool === 'polyline' && previewCoords.length >= 1) {
+      tempGeoObject = new ymaps.Polyline(previewCoords, {}, styleByKind('polyline'));
     }
 
     if (tempGeoObject) {
       tempGeoObject.options.set('strokeStyle', 'dot');
       map.geoObjects.add(tempGeoObject);
     }
+  }
+
+  function refreshPreviewPoint(coords) {
+    if (activeTool === 'select') {
+      removePreviewPoint();
+      return;
+    }
+
+    if (!previewPoint) {
+      previewPoint = new ymaps.Placemark(coords, {}, { preset: 'islands#grayCircleDotIcon' });
+      map.geoObjects.add(previewPoint);
+      return;
+    }
+
+    previewPoint.geometry.setCoordinates(coords);
   }
 
   function finishDrawing() {
@@ -64,12 +109,25 @@ export function createDrawingManager({ ymaps, map, onCreate, onSelect, onStatusC
       return;
     }
 
-    if (activeTool === 'point') return;
+    if (activeTool === 'point' || activeTool === 'select') return;
 
     onCreate(activeTool, cloneCoords(drawingCoords));
     drawingCoords = [];
     removeTemp();
     updateStatus('Объект создан.');
+  }
+
+  function setEditable(geoObject, item, editable) {
+    if (item.kind === 'point') {
+      geoObject.options.set('draggable', editable);
+      return;
+    }
+
+    if (editable) {
+      geoObject.editor.startEditing();
+    } else if (geoObject.editor && geoObject.editor.state.get('editing')) {
+      geoObject.editor.stopEditing();
+    }
   }
 
   function addGeoObject(item) {
@@ -86,6 +144,13 @@ export function createDrawingManager({ ymaps, map, onCreate, onSelect, onStatusC
       event.preventDefault();
       selectObject(item.id);
       onSelect?.(item.id);
+    });
+
+    geoObject.events.add('geometrychange', () => {
+      const type = geoObject.geometry.getType();
+      const rawCoords = geoObject.geometry.getCoordinates();
+      const coords = type.includes('Polygon') ? rawCoords[0] : rawCoords;
+      onGeometryChange?.(item.id, coords);
     });
 
     geoObject.properties.set('hintContent', item.name);
@@ -108,9 +173,7 @@ export function createDrawingManager({ ymaps, map, onCreate, onSelect, onStatusC
     if (!geoObject) return;
     map.geoObjects.remove(geoObject);
     geoObjects.delete(id);
-    if (selectedObjectId === id) {
-      selectedObjectId = null;
-    }
+    if (selectedObjectId === id) selectedObjectId = null;
   }
 
   function clearAllGeoObjects() {
@@ -119,10 +182,12 @@ export function createDrawingManager({ ymaps, map, onCreate, onSelect, onStatusC
     selectedObjectId = null;
     drawingCoords = [];
     removeTemp();
+    removePreviewPoint();
   }
 
   function selectObject(id) {
     selectedObjectId = id;
+
     geoObjects.forEach((geoObject, geoId) => {
       const isSelected = geoId === id;
       const kind = geoObject.geometry.getType().toLowerCase().includes('polygon')
@@ -130,7 +195,9 @@ export function createDrawingManager({ ymaps, map, onCreate, onSelect, onStatusC
         : geoObject.geometry.getType().toLowerCase().includes('line')
           ? 'polyline'
           : 'point';
+
       geoObject.options.set(styleByKind(kind, isSelected));
+      setEditable(geoObject, { kind }, activeTool === 'select' && isSelected);
     });
   }
 
@@ -139,12 +206,26 @@ export function createDrawingManager({ ymaps, map, onCreate, onSelect, onStatusC
     drawingCoords = [];
     removeTemp();
 
+    const isDrawingMode = tool !== 'select';
+    updateInteractionMode(isDrawingMode);
+
+    geoObjects.forEach((geoObject, geoId) => {
+      const isSelected = selectedObjectId === geoId;
+      const kind = geoObject.geometry.getType().toLowerCase().includes('polygon')
+        ? 'polygon'
+        : geoObject.geometry.getType().toLowerCase().includes('line')
+          ? 'polyline'
+          : 'point';
+      setEditable(geoObject, { kind }, tool === 'select' && isSelected);
+    });
+
     if (tool === 'select') {
-      updateStatus('Режим выбора. Кликните по объекту на карте или в списке.');
+      removePreviewPoint();
+      updateStatus('Режим навигации: карта двигается, объект можно выбрать и редактировать.');
     }
-    if (tool === 'polygon') updateStatus('Полигон: кликайте точки, двойной клик — завершить.');
-    if (tool === 'polyline') updateStatus('Линия: кликайте точки, двойной клик — завершить.');
-    if (tool === 'point') updateStatus('Точка: клик по карте создаёт объект.');
+    if (tool === 'polygon') updateStatus('Рисование полигона: один клик — точка, двойной клик или "Завершить" — готово.');
+    if (tool === 'polyline') updateStatus('Рисование линии: один клик — точка, двойной клик или "Завершить" — готово.');
+    if (tool === 'point') updateStatus('Рисование точки: один клик по карте добавляет объект.');
   }
 
   function undoDrawingStep() {
@@ -152,6 +233,14 @@ export function createDrawingManager({ ymaps, map, onCreate, onSelect, onStatusC
     drawingCoords.pop();
     refreshTemp();
   }
+
+  map.events.add('mousemove', (event) => {
+    const coords = event.get('coords');
+    refreshPreviewPoint(coords);
+    if (activeTool === 'polygon' || activeTool === 'polyline') {
+      refreshTemp(coords);
+    }
+  });
 
   map.events.add('click', (event) => {
     if (activeTool === 'select') return;
@@ -181,10 +270,11 @@ export function createDrawingManager({ ymaps, map, onCreate, onSelect, onStatusC
     clearAllGeoObjects,
     selectObject,
     undoDrawingStep,
-    getSelectedObjectId: () => selectedObjectId,
+    finishDrawing,
     stopDrawing: () => {
       drawingCoords = [];
       removeTemp();
+      removePreviewPoint();
     },
   };
 }

@@ -2,7 +2,7 @@ import { APP_CONFIG } from './config.js';
 import { getDefaultWorkType, getWorkTypeById } from './data/workTypes.js';
 import { createDrawingManager } from './modules/drawing.js';
 import { calculateTotals, getTotalsMarkup, recalculateObject } from './modules/estimate.js';
-import { initMap, setMapType } from './modules/map.js';
+import { initMap } from './modules/map.js';
 import { getQuantityByKind, getUnitByKind } from './modules/measurements.js';
 import {
   exportProjectToFile,
@@ -19,6 +19,13 @@ const state = {
 };
 
 let drawing;
+
+const TOOL_HINTS = {
+  select: 'Режим выбора и навигации: можно двигать карту и редактировать выбранный объект.',
+  polygon: 'Рисование полигона: клик — новая вершина, двойной клик/"Завершить" — завершение.',
+  polyline: 'Рисование линии: клик — новая вершина, двойной клик/"Завершить" — завершение.',
+  point: 'Рисование точки: один клик по карте добавляет точку.',
+};
 
 function uid() {
   return `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
@@ -62,6 +69,22 @@ function removeItem(id) {
   state.items = state.items.filter((item) => item.id !== id);
   drawing.removeGeoObject(id);
   if (state.selectedId === id) state.selectedId = null;
+  render();
+}
+
+function updateGeometry(id, coords) {
+  const index = state.items.findIndex((item) => item.id === id);
+  if (index < 0) return;
+
+  const current = state.items[index];
+  const quantity = getQuantityByKind(current.kind, coords);
+
+  state.items[index] = recalculateObject({
+    ...current,
+    coords,
+    quantity: Number(quantity.toFixed(2)),
+  });
+
   render();
 }
 
@@ -113,6 +136,7 @@ async function setupApp() {
   const toolGrid = document.getElementById('tool-grid');
   const hint = document.getElementById('drawing-hint');
   const mapStatus = document.getElementById('map-status');
+  const mapContainer = document.getElementById('map');
 
   try {
     const { ymaps, map } = await initMap('map');
@@ -120,6 +144,7 @@ async function setupApp() {
     drawing = createDrawingManager({
       ymaps,
       map,
+      mapContainer,
       onCreate: (kind, coords) => {
         const item = createItem(kind, coords);
         state.items.push(item);
@@ -132,6 +157,7 @@ async function setupApp() {
         state.selectedId = id;
         render();
       },
+      onGeometryChange: updateGeometry,
       onStatusChange: (text) => {
         mapStatus.textContent = text;
       },
@@ -148,6 +174,11 @@ async function setupApp() {
         return;
       }
 
+      if (toolId === 'finish') {
+        drawing.finishDrawing();
+        return;
+      }
+
       if (toolId === 'clear') {
         state.items = [];
         state.selectedId = null;
@@ -159,15 +190,12 @@ async function setupApp() {
       state.activeTool = toolId;
       drawing.setTool(toolId);
       setActiveTool(toolGrid, toolId);
-      updateHint(hint, `Активный инструмент: ${toolId}`);
+      updateHint(hint, TOOL_HINTS[toolId] ?? `Активный инструмент: ${toolId}`);
     });
 
     setActiveTool(toolGrid, state.activeTool);
     drawing.setTool(state.activeTool);
-
-    document.getElementById('map-type').addEventListener('change', (event) => {
-      setMapType(map, event.target.value);
-    });
+    updateHint(hint, TOOL_HINTS[state.activeTool]);
 
     document.getElementById('save-local').addEventListener('click', () => {
       saveProjectToLocalStorage(APP_CONFIG.storageKey, serializeProject());

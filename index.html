@@ -22,14 +22,6 @@
           <section class="panel-block tools-block">
             <h2>Инструменты</h2>
             <div class="tool-grid" id="tool-grid"></div>
-            <div class="inline-controls">
-              <label for="map-type">Тип карты</label>
-              <select id="map-type">
-                <option value="yandex#map">Схема</option>
-                <option value="yandex#satellite">Спутник</option>
-                <option value="yandex#hybrid">Гибрид</option>
-              </select>
-            </div>
             <div class="hint" id="drawing-hint">Выберите инструмент для начала.</div>
           </section>
 
@@ -41,12 +33,12 @@
           <section class="panel-block actions-block">
             <h2>Проект</h2>
             <div class="action-row">
-              <button id="save-local" class="secondary">Сохранить в браузере</button>
-              <button id="load-local" class="secondary">Загрузить из браузера</button>
+              <button id="save-local" class="secondary compact">Сохранить</button>
+              <button id="load-local" class="secondary compact">Загрузить</button>
             </div>
             <div class="action-row">
-              <button id="export-json" class="secondary">Экспорт JSON</button>
-              <label for="import-json" class="button-like secondary">Импорт JSON</label>
+              <button id="export-json" class="secondary compact">Экспорт JSON</button>
+              <label for="import-json" class="button-like secondary compact">Импорт JSON</label>
               <input id="import-json" type="file" accept="application/json" hidden />
             </div>
           </section>

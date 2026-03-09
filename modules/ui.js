@@ -2,13 +2,14 @@ import { WORK_TYPES } from '../data/workTypes.js';
 import { formatNumber } from './measurements.js';
 
 const TOOL_DEFS = [
+  { id: 'select', label: 'Выбор' },
   { id: 'polygon', label: 'Полигон' },
   { id: 'polyline', label: 'Линия' },
   { id: 'point', label: 'Точка' },
-  { id: 'select', label: 'Выбор' },
-  { id: 'delete-selected', label: 'Удалить выбранный' },
-  { id: 'undo', label: 'Отменить шаг' },
-  { id: 'clear', label: 'Очистить карту' },
+  { id: 'finish', label: 'Завершить' },
+  { id: 'undo', label: 'Отменить' },
+  { id: 'delete-selected', label: 'Удалить' },
+  { id: 'clear', label: 'Очистить' },
 ];
 
 function renderWorkTypeOptions(kind, selectedId) {
