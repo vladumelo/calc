@@ -98,6 +98,10 @@ export function createDrawingManager({
     previewPoint.geometry.setCoordinates(coords);
   }
 
+  function isLineOrPolygonTool() {
+    return activeTool === 'polygon' || activeTool === 'polyline';
+  }
+
   function finishDrawing() {
     if (activeTool === 'polygon' && drawingCoords.length < 3) {
       updateStatus('Для полигона нужно минимум 3 точки.');
@@ -109,7 +113,7 @@ export function createDrawingManager({
       return;
     }
 
-    if (activeTool === 'point' || activeTool === 'select') return;
+    if (!isLineOrPolygonTool()) return;
 
     onCreate(activeTool, cloneCoords(drawingCoords));
     drawingCoords = [];
@@ -204,6 +208,7 @@ export function createDrawingManager({
   function setTool(tool) {
     activeTool = tool;
     drawingCoords = [];
+    selectedObjectId = null;
     removeTemp();
 
     const isDrawingMode = tool !== 'select';
@@ -251,6 +256,8 @@ export function createDrawingManager({
       updateStatus('Точка добавлена.');
       return;
     }
+
+    if (!isLineOrPolygonTool()) return;
 
     drawingCoords.push(coords);
     refreshTemp();

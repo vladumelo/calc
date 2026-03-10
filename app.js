@@ -188,6 +188,7 @@ async function setupApp() {
       }
 
       state.activeTool = toolId;
+      state.selectedId = null;
       drawing.setTool(toolId);
       setActiveTool(toolGrid, toolId);
       updateHint(hint, TOOL_HINTS[toolId] ?? `Активный инструмент: ${toolId}`);
